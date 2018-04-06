@@ -54,3 +54,21 @@ attribute 'sync_cert_params',
     :help => 'Attributes required for configuring keysync-cert'
   }
 
+attribute 'keywhiz_chocopackage_source_url',
+  :description => "Package Source Url",
+  :required => "required",
+  :format => {
+    :category => '2.Windows',
+    :order => 1,
+    :help => 'Chocolatey package source url'
+  }
+
+attribute 'keywhiz_chocopackage_details',
+  :description => "Package Details",
+  :data_type => "hash",
+  :format => {
+    :data_type => "hash",
+    :category => '2.Windows',
+    :order => 2,
+    :help => 'Keywhiz Windows Service Package Name and Version'
+  }
