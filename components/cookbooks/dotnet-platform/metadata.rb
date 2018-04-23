@@ -30,3 +30,13 @@ attribute 'chocolatey_package_details',
     :category  => '2.Chocolatey package details',
     :order     => 1
   }
+
+  attribute 'baas_package_details',
+    :description => "Package details",
+    :data_type   => "hash",
+    :default     => '{}',
+    :format      => {
+      :help      => 'Add chocolatey package details for BaaS. Format: <chocolatey package name> = <chocolatey package version>',
+      :category  => '2.Baas Chocolatey package details',
+      :order     => 1
+    }
