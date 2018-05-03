@@ -1,8 +1,7 @@
-windows_service = node['windowsservice']
-service_arguments = ( windows_service.arguments.nil? ||  windows_service.arguments.empty? ) ? [] : JSON.parse(windows_service.arguments)
+windows_service_name = "Walmart.Platform.BAASDriver"
 
-windowsservice windows_service.service_name do
+windowsservice windows_service_name do
   action :start
   arguments         service_arguments
-  wait_for_status   windows_service.wait_for_status
+  wait_for_status   30
 end
