@@ -39,7 +39,7 @@ if node[:workorder][:services].has_key?('dotnet-platform')
 
   Chef::Log.info("#{locationExe} #{driverId} #{jobId}")
 
-  params = "\"/InstallDir: \"#{locationExe}\" /DriverId:\"#{driverId}\" /JobId:#{jobId}\""
+   params = "\"/InstallDir:#{locationExe} /DriverId:#{driverId} /JobId:#{jobId}\""
 
   Chef::Log.info("Using chocolatey repo #{package_source_url}")
 

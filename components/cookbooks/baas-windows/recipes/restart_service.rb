@@ -1,2 +1,2 @@
-include_recipe 'windowsservice::stop_service'
-include_recipe 'windowsservice::start_service'
+include_recipe 'baas-windows::stop_service'
+include_recipe 'baas-windows::start_service'
