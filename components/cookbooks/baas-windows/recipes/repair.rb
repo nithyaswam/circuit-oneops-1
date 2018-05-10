@@ -1,1 +1,1 @@
-include_recipe "baas-windows::add"
+include_recipe "baas-windows::restart_service"

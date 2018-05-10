@@ -7,6 +7,7 @@ version          '0.1.0'
 
 supports 'windows'
 depends 'nugetpackage'
+depends 'windowsservice'
 
 grouping 'default',
   :access   => "global",
