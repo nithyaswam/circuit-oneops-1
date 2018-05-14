@@ -26,11 +26,39 @@ certs = node.workorder.payLoad.DependsOn.select { |d| d[:ciClassName] =~ /Certif
 ssl_certificate_exists = false
 thumbprint = ''
 
-certs.each do |cert|
-  if !cert[:ciAttributes][:pfx_enable].nil? && cert[:ciAttributes][:pfx_enable] == 'true'
-    ssl_data = cert[:ciAttributes][:ssl_data]
-    ssl_password = cert[:ciAttributes][:ssl_password]
-    ssl_certificate_exists = true
+if site.binding_type == 'https'
+  ssl_certificate_exists = true
+
+  if site.cert_auto_provision == 'true'
+    cloud_name = node[:workorder][:cloud][:ciName]
+    provider = ""
+    cert_service = node[:workorder][:services][:certificate]
+    Chef::Log.info "Certificate Service - #{cloud_name} and  #{cert_service}"
+    if !cert_service.nil? && !cert_service[cloud_name].nil?
+    	  provider = node[:workorder][:services][:certificate][cloud_name][:ciClassName].gsub("cloud.service.","").downcase.split(".").last
+    else
+            Chef::Log.error("Certificate cloud service not defined for this cloud")
+            exit 1
+    end
+
+    certificate = Hash.new
+    certificate["common_name"] = site.cert_common_name
+    certificate["san"] = site.cert_san
+    certificate["external"] = "false"
+    certificate["domain"] = site.cert_domain
+    certificate["owner_email"] = site.cert_owner_email
+    certificate["passphrase"] = site.cert_passphrase
+
+    node.set[:certificate] = certificate
+    include_recipe provider + "::add_certificate"
+
+    ssl_data = node[:pfx_cert]
+    ssl_password = site.cert_passphrase
+  else
+    ssl_data = site.cert_ssl_data
+    ssl_password = site.cert_ssl_password
+
+  end
 
     cert = OpenSSL::X509::Certificate.new(ssl_data)
     thumbprint = OpenSSL::Digest::SHA1.new(cert.to_der).to_s
@@ -38,8 +66,6 @@ certs.each do |cert|
     iis_certificate platform_name do
       raw_data ssl_data
       password ssl_password
-    end
-
   end
 end
 
