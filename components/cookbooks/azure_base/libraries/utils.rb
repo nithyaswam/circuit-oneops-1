@@ -46,8 +46,11 @@ module Utils
     end
   end
 
-  def get_component_name(type, ciId)
+  def get_component_name(type, ciId, platform_ci_id = nil)
     ciId = ciId.to_s
+    unless platform_ci_id.nil?
+      return "nic-#{platform_ci_id}-#{ciId}" if type == "nic"
+    end
     if type == "nic"
       return "nic-" + ciId
     elsif type == "publicip"
@@ -119,7 +122,7 @@ module Utils
 
     OOLog.info("Getting Fault Domain: #{region}")
 # when new region added to oneops this fault domains needs to be updated
-    fault_domains = {:eastus2 => 3, :southcentralus => 3, :eastasia => 2, :japaneast => 2, :default => 2}
+    fault_domains = {:eastus2 => 3, :southcentralus => 3, :westus => 3, :eastasia => 2, :japaneast => 2, :default => 2}
 
     OOLog.info("Finished Fault Domain: #{region}")
     return fault_domains[region.to_sym].nil? ? fault_domains['default'.to_sym] : fault_domains[region.to_sym]
@@ -148,20 +151,25 @@ module Utils
   end
 
   def is_new_cloud(node)
-
     cloud_name = node['workorder']['cloud']['ciName']
+    cloud_name =~ /^(dev|prod|stg)-az-(\S*)-\d*$/ ? true : false
+  end
 
-    OOLog.info("Util:is_new_cloud cloud_name: #{cloud_name}")
+  def get_nsg_rg_name(location)
+    "#{location.upcase}_NSGs_RG"
+  end
 
-    if cloud_name = ~/^azure-.*-wm-.*$/
-      is_new_cloud = true
-    else
-      is_new_cloud = false
-    end
+  def get_nsg_name(node)
+    "#{get_pack_name(node)}_nsg_v#{current_time}"
+  end
 
-    OOLog.info("Util:is_new_cloud is_new_cloud: #{is_new_cloud}")
+  def get_pack_name(node)
+    node['workorder']['box']['ciAttributes']['pack']
+  end
 
-    is_new_cloud
+  def current_time
+    time = Time.now.to_f.to_s
+    time.split(/\W+/).join
   end
 
   # This method is to get the resource group for action work orders
@@ -197,9 +205,7 @@ module Utils
     OOLog.info("Resource Group Name Length: #{resource_group_name.length}")
 
     resource_group_name
-
   end
-
 
   module_function :get_credentials,
                   :set_proxy,
@@ -211,6 +217,9 @@ module Utils
                   :get_update_domains,
                   :get_resource_tags,
                   :is_new_cloud,
-                  :get_resource_group
+                  :get_resource_group,
+                  :get_nsg_rg_name,
+                  :get_nsg_name,
+                  :get_pack_name
 
-end
+  end

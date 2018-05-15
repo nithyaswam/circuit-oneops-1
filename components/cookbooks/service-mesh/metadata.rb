@@ -18,7 +18,7 @@ attribute 'tenants',
     :important => true,
     :category => '1.Application Config',
     :order => 1,
-    :help => 'Enter tenant config as 3 values separated by space (application-key environment-name ingress-address).E.g. "cart-app prod http://localhost:8086"'
+    :help => 'Enter tenant config as 4 values separated by space (application-key environment-name ingress-address ECV-url).E.g. "cart-app prod http://localhost:8086 /ecv.html"'
   }
 
 attribute 'show-advanced-config',
@@ -35,7 +35,7 @@ attribute 'show-advanced-config',
 attribute 'service-mesh-version',
           :description => 'Service Mesh Version',
           :required => 'required',
-          :default => '1.3',
+          :default => '1.7.1',
           :format => {
               :important => true,
               :help => 'Service mesh version, do not change if not sure what value to use',

@@ -37,11 +37,7 @@ else
   `cp ~/.ssh/authorized_keys /home/oneops/.ssh/authorized_keys`
 fi
 
-
-# rsync cookbooks
-rsync -a $home_dir/circuit-oneops-1 /home/oneops/
-rsync -a $home_dir/shared /home/oneops/
-chown -R oneops:oneops /home/oneops/circuit-oneops-1 /home/oneops/shared /home/oneops/.ssh /opt/oneops/workorder /opt/oneops/rubygems_proxy
+chown -R oneops:oneops /home/oneops/.ssh /opt/oneops/workorder /opt/oneops/rubygems_proxy
 
 # Setup path
 if [ -e /home/oneops/ruby/2.0.0-p648/bin ]; then

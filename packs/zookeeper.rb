@@ -41,7 +41,7 @@ resource "zookeeper",
              'initial_timeout_ticks' => "10",
              'sync_timeout_ticks' => "5",
              'max_session_timeout' => "40000",
-             'max_client_connections' => "1000",
+             'max_client_connections' => "60",
              'autopurge_snapretaincount' => "10",
              'autopurge_purgeinterval' => "6"
              },

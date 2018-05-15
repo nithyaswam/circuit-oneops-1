@@ -200,6 +200,15 @@ template "/etc/kafka/log4j.properties" do
     mode  '0755'
 end
 
+# Validatiion of Zookeeper "admin" user password for SASL
+if (node['kafka']['is_zk_secured'] == "true" && node['kafka']['zk_sasl_admin_password'].strip.empty?)
+  nozksasladminpass = "The password for SASL 'admin' user in External Zookeeper section can't be empty."
+  Chef::Log.error("FATAL: #{nozksasladminpass}")
+  puts "***FAULT:FATAL= #{nozksasladminpass}"
+  Chef::Application.fatal!(nozksasladminpass)
+end
+
+
 # jaas conf file
 template "/etc/kafka/kafka_server_jaas.conf" do
   source "kafka_server_jaas.conf.erb"

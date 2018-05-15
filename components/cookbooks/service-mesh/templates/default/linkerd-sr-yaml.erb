@@ -6,17 +6,14 @@ admin:
 
 namers:
 - kind: com.w5t.sr
-  srProd: <%= @sr_prod_url %>
-  srNonProd: <%= @sr_nonprod_url %>
-  prod: <%= @is_prod_env %>
-
   tenants:
 <%= @tenant_configs %>
-  requestTimeout: 10000
-  pollInterval: 5000
 
 routers:
 - protocol: http
+  client:
+    failureAccrual:
+      kind: com.w5t.failureaccrual
   identifier:
     kind: com.w5t.stratiHeaders
   dtab: |
@@ -26,20 +23,27 @@ routers:
   loggers:
   - kind: com.w5t.policy
     policyEnd: Consumer
+    alerting: spotlight
+  - kind: com.w5t.soa10.rewriter
   servers:
   - port: 4140
     ip: 0.0.0.0
 
 - protocol: http
+  client:
+    failureAccrual:
+      kind: com.w5t.failureaccrual
   identifier:
     kind: com.w5t.stratiHeaders
   dtab: |
     /svc => /#/com.w5t.sr/in;
+    /svc/ecv => /#/com.w5t.sr/ecv;
   httpAccessLog: logs/access.log
   label: in
   loggers:
   - kind: com.w5t.policy
     policyEnd: Producer
+    alerting: spotlight
   servers:
   - port: 4141
     ip: 0.0.0.0

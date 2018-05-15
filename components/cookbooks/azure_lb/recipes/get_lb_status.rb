@@ -167,57 +167,71 @@ listeners_from_wo.each do |l|
   end
 end
 
-request_path = load_balancer.probes[0].request_path
-protocol = load_balancer.probes[0].protocol
 
-if protocol.downcase == 'tcp'
-  protocol = "https"
-end
+ruby_block 'check status on compute' do
+  block do
+    probes.each do |p|
+      request_path = p.request_path
+      protocol = p.protocol
 
-if ecvs_from_wo == nil || ecvs_from_wo.empty?
-  effective_level = "ERROR"
-  puts "#{effective_level}: ECV is not configured, LB will not route traffic to any compute\n"
-else
+      if protocol.downcase == 'tcp'
+        protocol = "https"
+      end
 
-  port = load_balancer.probes[0].port
-  computes_from_wo.each do |compute|
-    vm_ip = compute[:ipaddress]
-
-    ruby_block 'check status' do
-      block do
-        comm = "curl -v #{protocol}://#{vm_ip}:#{port}#{request_path}"
+      port = p.port
+      computes_from_wo.each do |compute|
+        vm_ip = compute[:ipaddress]
+        comm = "curl -i -k #{protocol}://#{vm_ip}:#{port}#{request_path}"
         Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
         result = shell_out(comm)
 
-        if result.stdout =~ /OK 200/
+        if result.stdout.include? "HTTP/1.1 200"
           effective_level = "INFO"
-          puts "#{effective_level}: ECV on #{vm_ip} is returing proper response\n"
+          puts "#{effective_level}: ECV on #{vm_ip} is returing proper response on port : #{port} and protocol : #{protocol}\n"
         else
           effective_level = "ERROR"
-          puts "#{effective_level}: ECV check on #{vm_ip} failed\n"
+          puts "#{effective_level}: ECV check on #{vm_ip} failed on port : #{port} and protocol : #{protocol}\n"
         end
       end
     end
   end
 end
 
+
+lb_ip = load_balancer.frontend_ip_configurations[0].private_ipaddress
+
 ruby_block 'check status at LB' do
   block do
-    lb_ip = load_balancer.frontend_ip_configurations[0].private_ipaddress
-    frontend_port = load_balancer.load_balancing_rules[0].frontend_port
-    comm = "curl -v #{protocol}://#{lb_ip}:#{frontend_port}#{request_path}"
-    Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
-    lb_result = shell_out(comm)
+    listeners_from_wo.each do |l|
+      frontend_port = l[:vport]
+      protocol = l[:vprotocol]
+      backend_port = l[:iport]
 
-    if lb_result.stdout =~ /OK 200/
-      effective_level = "INFO"
-      puts "#{effective_level}: LB is routing traffic\n"
-    else
-      effective_level = "ERROR"
-      puts "#{effective_level}: LB is not routing traffic\n"
+      request_path = nil
+      if ecvs_from_wo == nil || ecvs_from_wo.empty?
+        ecvs_from_wo.each do |ecv|
+          if backend_port == ecvs_from_wo[:port]
+            request_path = ecvs_from_wo[:request_path]
+            break
+          end
+        end
+      end
+
+      comm = "curl -i -k #{protocol}://#{lb_ip}:#{frontend_port}#{request_path}"
+      Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
+      lb_result = shell_out(comm)
+
+      if lb_result.stdout.include? "HTTP/1.1 200"
+        effective_level = "INFO"
+        puts "#{effective_level}: LB is routing traffic from port : #{frontend_port} and protocol : #{protocol}\n"
+      else
+        effective_level = "ERROR"
+        puts "#{effective_level}: LB is not routing traffic from port : #{frontend_port} and protocol : #{protocol}\n"
+      end
     end
   end
 end
+
 
 if Chef::Log.level == :debug
   Chef::Log.info("level: #{Chef::Log.level}")

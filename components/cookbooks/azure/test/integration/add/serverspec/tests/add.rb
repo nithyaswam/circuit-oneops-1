@@ -226,9 +226,10 @@ describe "azure node::create" do
 
       nic_svc = AzureNetwork::NetworkInterfaceCard.new(@spec_utils.get_azure_creds)
       nic_svc.ci_id = $node['workorder']['rfcCi']['ciId']
+      nic_svc.platform_ci_id = $node['workorder']['box']['ciId'] if Utils.is_new_cloud($node)
       rg_svc = AzureBase::ResourceGroupManager.new($node)
       nic_svc.rg_name = rg_svc.rg_name
-      nic_name = Utils.get_component_name('nic', nic_svc.ci_id)
+      nic_name = Utils.get_component_name('nic', nic_svc.ci_id, nic_svc.platform_ci_id)
       nic = nic_svc.get(nic_name)
 
       tags_from_work_order.each do |key, value|

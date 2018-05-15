@@ -13,7 +13,7 @@ playbook = "add"
 clustername = node['cloudrdbms']['clustername']
 drclouds = node['cloudrdbms']['drclouds']
 cloudrdbmspackversion = node['cloudrdbms']['cloudrdbmspackversion']
-  
+
 Chef::Log.info("CloudRDBMS get_var_files")
 log "CloudRDBMS Show environment for concordaddress: '#{concordaddress}'"
 log "CloudRDBMS Show environment for managedserviceuser: '#{managedserviceuser}'"
@@ -94,6 +94,7 @@ bash 'start_ansible' do
       curl  -u "#{managedserviceuser}:#{managedservicepass}" -F request=@_main.yml -F org="Default" -F project="cloudrdbms" -F repo="#{cloudrdbmspackversion}" -F entryPoint="ansibleFlow" http://#{concordaddress}/api/v1/process >./curl_#{playbook}.out
       RC=$?
       echo "running the command exited with return code ${RC}"
+      sleep 30
     EOF
 end
 
@@ -113,7 +114,7 @@ ruby_block 'validate_complete' do
             if return_code_curl != 0
               puts "Exit status: $?.exitstatus"
               raise RuntimeError, "Some error happened while trying to get the status"
-            elsif ( status == "RUNNING" ) || ( status == "ENQUEUED" )
+            elsif ( status == "RUNNING" ) || ( status == "ENQUEUED" ) || ( status == "STARTING" )
               curlComplete = 0
               curlAttempt += 1
               Chef::Log.info("CloudRDBMS attempt #{curlAttempt} of 360 on instanceID(#{instanceId}), current status is #{status}.")
@@ -129,4 +130,3 @@ ruby_block 'validate_complete' do
       end
     end
 # END bash 'validate_complete'
-    

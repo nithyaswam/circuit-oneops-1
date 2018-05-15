@@ -78,7 +78,7 @@ ruby_block 'create_collection' do
                 # Warn against multiple replicas of same shard on a single node. For example:
                 # Consider an 8 node cluster and a collection request for shards = 2,
                 # replication factor = 12 and maxShardsPerNode = 3
-                # 
+                #
                 # For the above case, 12 replicas need to be placed on 8 nodes.
                 # And we will end up placing multiple replicas of the same shard on a single
                 # node. This placement does not seem very useful and it is good to warn
@@ -100,7 +100,7 @@ ruby_block 'create_collection' do
                     }
                     collection_api(node['ipaddress'], port_num, params, config_name)
                 end
-                run_context.include_recipe 'solr-collection::assign_replicas'
+                run_context.include_recipe 'solr-collection::add_replica'
             end
         else
             coll_max_shards_per_node = collection_state_obj["maxShardsPerNode"]
@@ -217,15 +217,15 @@ end # override_collection_config
 
 
 
-ruby_block 'ignore_commit_optimize_requests_enabled' do
-  block do
-    if node['validation_enabled'] == 'true' && !ignore_commit_optimize_requests_enabled?
-      error = "IgnoreCommitOptimizeUpdateProcessorFactory is not found in one of the UpdateRequestProcessorChains.This processor is very highly recommended so that no one can issue commits or optimize calls very frequently and destabilize the cluster. If you still believe you do not need this validation-failure, please disable the validation flag from collection component."
-      puts "***FAULT:FATAL=#{error}"
-      raise error
-    end
-  end
-end
+# ruby_block 'ignore_commit_optimize_requests_enabled' do
+#   block do
+#     if node['validation_enabled'] == 'true' && !ignore_commit_optimize_requests_enabled?
+#       error = "IgnoreCommitOptimizeUpdateProcessorFactory is not found in one of the UpdateRequestProcessorChains.This processor is very highly recommended so that no one can issue commits or optimize calls very frequently and destabilize the cluster. If you still believe you do not need this validation-failure, please disable the validation flag from collection component."
+#       puts "***FAULT:FATAL=#{error}"
+#       raise error
+#     end
+#   end   
+# end
 
 # Verify if schemaless mode is disabled in order to avoid users to rapidly construct effective schema without manually modifying the schema.
 ruby_block 'disallow_schemaless_mode' do
@@ -240,4 +240,3 @@ ruby_block 'disallow_schemaless_mode' do
     end
   end
 end
-

@@ -119,9 +119,10 @@ resource "secgroup",
 # our Agent Java program needs this:
 resource "lb",
 :except => [ 'single' ],
-:design => false,
+:design => true,
 :attributes => {
-    "listeners"     => '["tcp 3306 tcp 3307"]'
+    "listeners"     => '["tcp 3306 tcp 3307"]',
+    "ecv_map"     => '{"3307":"port-check"}'
   }
 
 # we use this to have the hostnames stay the same after a compute REPLACE:

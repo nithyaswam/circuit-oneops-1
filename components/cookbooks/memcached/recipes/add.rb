@@ -1,6 +1,7 @@
 ci=node['memcached']
   
 cli_opts=[
+  "-U 0", # Disabled UDP
   "-u #{ci[:user]}",
   "-p #{ci[:port]}",
   "-m #{ci['max_memory']}",

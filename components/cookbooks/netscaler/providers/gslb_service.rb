@@ -261,8 +261,7 @@ def create_gslb_service
     
     gslb_service_ip = existing_service["ipaddress"]
 
-    if @new_resource.serverip != gslb_service_ip || 
-      lb['ciAttributes']['stickiness'] == 'true' ||
+    if @new_resource.serverip != gslb_service_ip ||
        existing_service["state"] !=  @new_resource.state ||
        existing_service["port"].to_i != @new_resource.port.to_i
       

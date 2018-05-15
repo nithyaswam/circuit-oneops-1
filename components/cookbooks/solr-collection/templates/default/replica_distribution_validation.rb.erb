@@ -79,7 +79,7 @@ def get_shard_replica_count_to_move(collection_name, shard_name, replica_per_sha
   cloud_count = cloud_to_compute_ips_map.keys.size
 
   # find  existing_cloud_to_replica_count_map from the cluster_status, which may be different from expected
-  # ex. {"1___1" => ["ip1","ip2"],"0___0" => ["ip3"],"1___4" => ["ip4","ip5"]} for azure
+  # ex. {"0" => ["ip1","ip2"],"1" => ["ip3"],"2" => ["ip4","ip5"]} for azure, where keys 0,1,2 are the fault domains
   # ex. {"prod-cdc5" => ["ip1","ip2"],"prod-cdc6" => ["ip3"],"prod-cdc7" => ["ip4","ip5"]} for openstack
 
 

@@ -220,6 +220,11 @@ class AzureSpecUtils < SpecUtils
     "#{get_server_name}_os_disk"
   end
 
+  def get_nsg_rg_location
+    cloud_name = get_cloud_name
+    @node['workorder']['services']['compute'][cloud_name]['ciAttributes']['location']
+  end
+
   def is_fast_image
     cloud_name                 = @node[:workorder][:cloud][:ciName]
     cloud                      = @node[:workorder][:services][:compute][cloud_name][:ciAttributes]
@@ -243,8 +248,6 @@ class AzureSpecUtils < SpecUtils
         ostype = cloud[:ostype]
       end
     end
-
-
 
     if fast_image_flag
       # connection

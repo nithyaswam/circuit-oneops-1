@@ -1,3 +1,5 @@
+Chef::Recipe.send(:include, NetworkHelper)
+Chef::Resource.send(:include, NetworkHelper)
 cloud_name = node[:workorder][:cloud][:ciName]
 provider = node[:workorder][:services][:compute][cloud_name][:ciClassName].gsub('cloud.service.', '').downcase
 
@@ -17,7 +19,6 @@ end
 full_hostname = node[:full_hostname]
 _hosts[full_hostname] = node.workorder.payLoad.ManagedVia[0]["ciAttributes"]["private_ip"]
 compute_baremetal = node.workorder.payLoad.ManagedVia[0]["ciAttributes"]["is_baremetal"]
-
 
 directory '/etc/cloud/cloud.cfg.d' do
   owner 'root'
@@ -103,10 +104,8 @@ if !node['fast_image']
   end
 end
 
-customer_domain = node['customer_domain']
-if customer_domain =~ /^\./
-  customer_domain.slice!(0)
-end
+customer_domain = trim_customer_domain(node)
+customer_domains, customer_domains_dot_terminated = search_domains(node)
 
 Chef::Log.info('adding /opt/oneops/domain... ')
 file '/opt/oneops/domain' do
@@ -116,122 +115,57 @@ file '/opt/oneops/domain' do
   content "#{customer_domain}\n"
 end
 
+if node['platform'] =~ /centos|redhat/
+  file '/etc/named.conf' do
+    content "include \"/etc/bind/named.conf.options\";\n"
+  end
+  %w[/etc/bind /var/cache/bind].each do |d|
+    directory d do
+      mode '0755'
+      recursive true
+    end
+  end
+end
+
+if node['platform'] != 'ubuntu'
+  file '/etc/sysconfig/named' do
+    content 'OPTIONS="-4"'
+  end
+end
+
+pkg = node['platform'] == 'suse' ? 'named.d' : 'bind'
+template "/etc/#{pkg}/named.conf.options" do
+  cookbook 'os'
+  source 'named.conf.options.erb'
+  variables(:forwarders => get_nameservers)
+end
+
+file '/etc/resolv.conf' do
+  content "nameserver 8.8.4.4\n"
+  only_if { ns = get_nameservers; ns.empty? && ns != '8.8.4.4' }
+end
+
+template "/etc/#{pkg}/named.conf.local" do
+  cookbook 'os'
+  source 'named.conf.local.erb'
+  variables(
+    lazy {
+      {
+        :zone_domain => trim_zone_domain(node['customer_domain']),
+        :forwarders => authoritative_dns_ip(trim_zone_domain(node['customer_domain']))
+      }
+    }
+  )
+end
+
+file '/etc/dhcp/dhclient.conf' do
+  content "supersede domain-search #{customer_domains};\n" \
+          "send host-name \"#{full_hostname}\";\n"
+end
+
 ruby_block 'setup bind and dhclient' do
   block do
     Chef::Log.info('*** SETUP BIND ***')
-
-    given_nameserver =(`cat /etc/resolv.conf |grep -v 127  | grep -v '^#' | grep nameserver | awk '{print $2}'`.split("\n")).join(';')
-    if given_nameserver.empty?
-      given_nameserver = '8.8.4.4'
-      `echo "nameserver #{given_nameserver}" > /etc/resolv.conf`
-    end
-    Chef::Log.info("nameservers: #{given_nameserver}")
-
-    node.customer_domain
-    zone_domain = node.customer_domain.downcase
-    dns_zone_found = false
-    while !dns_zone_found && zone_domain.split('.').size > 2
-      result = `dig +short NS #{zone_domain}`.to_s
-      valid_result = result.split("\n") - ['']
-      if valid_result.size > 0
-        puts "found: #{zone_domain}"
-        dns_zone_found = true
-      else
-        parts = zone_domain.split('.')
-        trash = parts.shift
-        zone_domain = parts.join('.')
-      end
-
-    end
-    Chef::Log.info('dns zone domain: '+zone_domain)
-
-    zone_config = ''
-
-    case node.platform
-    when 'redhat', 'centos'
-      named_conf = 'include "/etc/bind/named.conf.options";'+"\n"
-      # commented out to prevent adding authoritative servers for the zone
-      # named_conf += 'include "/etc/bind/named.conf.local";'+"\n"
-      ::File.open('/etc/named.conf', 'w') {|f| f.write(named_conf) }
-
-      Chef::Log.info('creating directory /etc/bind/')
-      make_bind = Mixlib::ShellOut.new('mkdir -p -m 755 /etc/bind/')
-      make_bind.run_command
-      Chef::Log.debug("#{make_bind.stdout}")
-      if !make_bind.stderr.empty?
-        Chef::Log.error("Error creating /var/cache/bind #{make_bind.stderr}")
-        make_bind.error!
-      end
-
-
-      Chef::Log.info('creating directory /var/cache/bind')
-      make_bind_cache = Mixlib::ShellOut.new('mkdir -p -m 755 /var/cache/bind')
-      make_bind_cache.run_command
-      Chef::Log.debug("#{make_bind_cache.stdout}")
-      if !make_bind_cache.stderr.empty?
-        Chef::Log.error("Error creating /var/cache/bind #{make_bind_cache.stderr}")
-        make_bind_cache.error!
-      end
-
-    end
-
-    options_config =  "options {\n"
-    options_config += "  directory \"/var/cache/bind\";\n";
-    options_config += "  auth-nxdomain no;    # conform to RFC1035\n";
-    options_config += "  listen-on-v6 { any; };\n";
-    options_config += "  forward only;\n"
-    options_config += '  forwarders { '+given_nameserver+"; };\n"
-    options_config += "};\n"
-
-    named_options_file = '/etc/bind/named.conf.options'
-    named_options_file = '/etc/named.d/named.conf.options' if node.platform == 'suse'
-    ::File.open(named_options_file, 'w') {|f| f.write(options_config) }
-
-    if node.platform != 'ubuntu'
-      bind_option = "OPTIONS=\"-4\""
-        ::File.open('/etc/sysconfig/named', 'w') {|f| f.write(bind_option) }
-    end
-
-    authoritative_dns_servers = (`dig +short NS #{zone_domain}`).split("\n")
-    puts 'authoritative_dns_servers: '+authoritative_dns_servers.join(' ')
-    dig_out = `dig +short #{authoritative_dns_servers.join(' ')}`
-    nameservers = dig_out.split("\n")
-
-    zone_config += "zone \"#{zone_domain+'.'}\" IN {\n"
-    zone_config += "    type forward;\n"
-    zone_config += '    forwarders {'+nameservers.join(';')+";};\n"
-    zone_config += "};\n"
-
-    named_conf_local_file = '/etc/bind/named.conf.local'
-    named_conf_local_file = '/etc/named.d/named.conf.local' if node.platform == 'suse'
-    ::File.open(named_conf_local_file, 'w') {|f| f.write(zone_config) }
-
-
-    # allow additional search domains to take priority over customer-env-cloud domain
-    customer_domains = ''
-    customer_domains_dot_terminated = ''
-    if node.workorder.rfcCi[:ciAttributes].has_key?('additional_search_domains') &&
-      !node.workorder.rfcCi.ciAttributes.additional_search_domains.empty?
-
-      additional_search_domains = JSON.parse(node.workorder.rfcCi.ciAttributes.additional_search_domains)
-      additional_search_domains.each do |d|
-        customer_domains += "\"#{d.strip}\","
-        customer_domains_dot_terminated += "#{d.strip}. "
-      end
-    end
-    customer_domains += "\"#{customer_domain}\""
-    customer_domains.downcase!
-    customer_domains_dot_terminated += "#{customer_domain}."
-    customer_domains_dot_terminated.downcase!
-
-    Chef::Log.info("supersede domain-search #{customer_domains}")
-    dhcp_config_content = "supersede domain-search #{customer_domains};\n"
-    dhcp_config_content += "send host-name \"#{full_hostname}\";\n"
-
-    dhcp_config_file = '/etc/dhcp/dhclient.conf'
-    Chef::Log.info("writing dhcp config: #{dhcp_config_file}")
-    ::File.open(dhcp_config_file, 'w') {|f| f.write(dhcp_config_content) }
-
 
     # handle other config files such as /etc/dhcp/dhclient-eth0.conf
     # these shall be linked to dhclient.conf

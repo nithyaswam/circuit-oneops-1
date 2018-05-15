@@ -268,7 +268,16 @@ module AzureLb
       svc = get_service
       location = svc['location']
 
-      resource_group_name = org[0..15] + '-' + assembly[0..15] + '-' + @node['workorder']['box']['ciId'].to_s + '-' + environment[0..15] + '-' + Utils.abbreviate_location(location)
+      new_cloud = Utils.is_new_cloud(@node)
+
+      if new_cloud
+        environment_ci_id = @node['workorder']['payLoad']['Environment'][0]['ciId']
+        resource_group_name = org[0..15] + '-' + assembly[0..15] + '-' + environment_ci_id.to_s + '-' + environment[0..15] + '-' + Utils.abbreviate_location(location)
+      else
+        platform_ci_id = @node['workorder']['box']['ciId']
+        resource_group_name = org[0..15] + '-' + assembly[0..15] + '-' + platform_ci_id.to_s + '-' + environment[0..15] + '-' + Utils.abbreviate_location(location)
+      end
+
       resource_group_name
     end
 

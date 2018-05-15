@@ -532,6 +532,15 @@ module SolrCloud
             validate_schema_fields("#{custom_dir_full_path}/#{parent_dir}/#{schema_file_name}")
           end
         end
+        # Deleting META-INF folder locally on the compute to avoid uploading to ZK while uploading solr config
+        if directoryExists?("META-INF")
+          begin
+            FileUtils.rm_rf("META-INF")
+          rescue Exception => msg
+            Chef::Log.error("Error while deleting the directory META-INF recursively : #{msg}")
+          end
+        end
+
         # if Dir.glob(File.join("META-INF")).empty?
         #   Chef::Log.warn("META-INF directory does not exist.")
         # else

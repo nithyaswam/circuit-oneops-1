@@ -15,9 +15,18 @@ template "/opt/nagios/libexec/check_solrprocess.sh" do
   action :create
 end
 
-# create "check_kafka_zk_conn.sh" script for nagios
+# create "check_solr_zk_conn.sh" script for nagios
 template "/opt/nagios/libexec/check_solr_zk_conn.sh" do
   source "check_solr_zk_conn.sh.erb"
+  owner node['solr']['user']
+  group node['solr']['user']
+  mode  '0755'
+  action :create
+end
+
+# create "check_solr_metrics_monitor.sh" script for nagios
+template "/opt/nagios/libexec/check_solr_metrics_monitor.sh" do
+  source "check_solr_metrics_monitor.sh.erb"
   owner node['solr']['user']
   group node['solr']['user']
   mode  '0755'

@@ -6,13 +6,15 @@
 #
 user_dir = node.workorder.payLoad.DependsOn.select {|c| c[:ciClassName] =~ /User/ }.first[:ciAttributes]['username']
 Chef::Log.info("user home directory : #{user_dir}")
-deployment_status_file = "#{user_dir}/solr_pack/deployment_status.txt"
-# for 'replace' action if '/app/solr_pack/deployment_status.txt' exists means it's a old compute and hence skip the installation and replica adjustment logic
+deployment_status_file = "/opt/solr/deployment_status.txt"
+# for 'replace' action if '/opt/solr/deployment_status.txt' exists means it's a old compute and hence skip the installation and replica adjustment logic
 if ::File.exists?(deployment_status_file)
   Chef::Log.info("It seems no compute replace took place as there exists a file #{deployment_status_file} hence only solr process will be restarted.")
   include_recipe 'solrcloud::restart'
   include_recipe 'solrcloud::post_solrcloud'
   return
+else
+  Chef::Log.info("#{deployment_status_file} does not exists, hence solr be installed")
 end
 ci = node.workorder.rfcCi
 attrs = ci[:ciAttributes]

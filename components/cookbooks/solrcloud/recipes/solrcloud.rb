@@ -185,7 +185,11 @@ if (node['solr_version'].start_with? "6.") || (node['solr_version'].start_with? 
   install_command = "sudo #{solr_download_path}/#{solr_file_woext}/bin/install_solr_service.sh #{solr_download_path}/#{solr_file_name} -i #{node['installation_dir_path']} -d #{node['data_dir_path']} -u #{node['solr']['user']} -p #{node['port_no']} -s solr#{node['solrmajorversion']} -n"
   Chef::Log.info("install_command = #{install_command}")
 
-  if node['action_name'] != "update"
+  # Install solr only if-
+  # Add compute
+  # Replace compute in openstack
+  # Replace compute in azure if no storage. (In case of storage, binaries are already installed on disk)
+  if node['action_name'] == "add" || (node['action_name'] == "replace" && node['azure_on_storage'] == 'false')
 
     # Extracts solr package.
     # solr_download_path = /tmp
@@ -230,10 +234,12 @@ if (node['solr_version'].start_with? "6.") || (node['solr_version'].start_with? 
   if !node['url_max_requests_per_sec_map'].empty?
     dest_path = "/app/solr-jetty-servlets.jar"
     jetty_lib_path = "/app/solr#{node['solrmajorversion']}/server/lib"
-    shared_download_http jetty_filter_url do
-      path dest_path
-      mode "0644"
-      action :create
+    if !File.exists?(dest_path)
+      shared_download_http jetty_filter_url do
+        path dest_path
+        mode "0644"
+        action :create
+      end
     end
     execute "move file to jetty lib" do
       command "cp #{dest_path} #{jetty_lib_path}"
@@ -311,14 +317,43 @@ if (node['solr_version'].start_with? "6.") || (node['solr_version'].start_with? 
   # If really required, it should be uploaded to zookeeper from the command line
   # uploadDefaultConfig(node['solr_version'],node['zk_host_fqdns'],node['default_data_driven_config'])
 
-  remote_directory '/opt/solr/solrmonitor'  do
-    source "solrmonitor"
-    owner 'app'
-    group 'app'
-    mode '0777'
-    files_mode '777'
-    action :create
+  # Copy the solrmonitor script from the jar to the location /opt/solr
+
+  solr_monitor_version = node['solr_monitor_version']
+
+  artifact_descriptor = "#{node['solr_custom_params']['solr_monitor_artifact']}:#{solr_monitor_version}:jar"
+
+  if (solr_monitor_version =~ /SNAPSHOT/)
+    artifact_urlbase = node['solr_custom_params']['snapshot_urlbase']
+  else
+    artifact_urlbase = node['solr_custom_params']['release_urlbase']
   end
+
+  solr_monitor_url, solr_monitor_version = SolrCustomComponentArtifact::get_artifact_url(artifact_descriptor, artifact_urlbase)
+
+  Chef::Log.info( "solr_monitor_url - #{solr_monitor_url} and solr_monitor_version -  #{solr_monitor_version}")
+
+  # Getting rid of SNAPSHOT string from the version name as we will need to manage release and snapshot releases in the same way
+  # if (solr_monitor_version.to_s =~ /SNAPSHOT/)
+  #   solr_monitor_version = solr_monitor_version.gsub('-SNAPSHOT', '')
+  # end
+
+  solr_monitor_jar = "solr-monitor-#{solr_monitor_version}.jar"
+  solr_monitor_dir = "/opt"
+  solr_monitor_custom_dir = "solr"
+
+  # Fetch the solr monitor artifact and copy it to /opt
+  remote_file "#{solr_monitor_dir}/#{solr_monitor_jar}" do
+    user 'app'
+    group 'app'
+    source solr_monitor_url
+    not_if { ::File.exists?("#{solr_monitor_dir}/#{solr_monitor_jar}") }
+  end
+
+
+  # Extract the jar contents and put it in /opt/solr.
+  # The extracted contents will have solrmonitor directory under which we have the scripts and the metrics directory. Metrics directory has the metrics list in yaml file
+  extractCustomConfig(solr_monitor_dir, solr_monitor_jar, solr_monitor_url, solr_monitor_custom_dir)
 
   directory '/opt/solr/solrmonitor/spiked-metrics' do
     owner 'app'
@@ -328,11 +363,16 @@ if (node['solr_version'].start_with? "6.") || (node['solr_version'].start_with? 
   end
 
   # Make sure the solr /opt directories exist and have the right permissions
-  %w[ /opt/solr /opt/solr/log ].each do |app_dir|
+  %w[ /opt/solr /opt/solr/log /opt/solr/solrmonitor ].each do |app_dir|
     directory app_dir do
-      user 'app'
+      owner 'app'
       group 'app'
+      mode '0777'
     end
+  end
+
+  execute "fix /opt/solr/solrmonitor owner and group" do
+    command "sudo chown app /opt/solr/solrmonitor/*; sudo chgrp app /opt/solr/solrmonitor/*; sudo chmod 0777 /opt/solr/solrmonitor/*"
   end
 
   template "/opt/solr/solrmonitor/metrics-tool.rb" do

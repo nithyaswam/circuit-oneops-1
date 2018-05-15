@@ -3,14 +3,12 @@ require 'net/https'
 require 'json'
 
 cloud_name = node[:workorder][:cloud][:ciName]
-Chef::Log::info("kiv:cloud name is " + cloud_name)
+Chef::Log::info("Cloud name is " + cloud_name)
 
 smesh_service = node[:workorder][:services][:servicemeshcloudservice]
 if !smesh_service.nil? && !smesh_service[cloud_name].nil?
   mesh_cloud_service = node[:workorder][:services][:servicemeshcloudservice][cloud_name][:ciAttributes]
   Chef::Log::info("mesh_artifact_url == " + mesh_cloud_service[:mesh_artifact_url])
-  Chef::Log::info("sr_url_prod == " + mesh_cloud_service[:sr_url_prod])
-  Chef::Log::info("sr_url_nonprod == " + mesh_cloud_service[:sr_url_nonprod])
 else
   Chef::Log.error("servicemeshcloudservice cloud service not defined for this cloud, so cannot proceed with deployment")
   exit 1
@@ -30,43 +28,45 @@ Chef::Log::info("Service mesh root directory created successfully")
 
 linkerdConfigPath = serviceMeshRootDir + "/linkerd-sr.yaml"
 
-srUrlProd = mesh_cloud_service[:sr_url_prod]
-srUrlNonprod = mesh_cloud_service[:sr_url_nonprod]
-Chef::Log::info("Prod url is #{srUrlProd}")
-Chef::Log::info("Nonprod url is #{srUrlNonprod}")
-
-### check if the environment is prod or nonprod ###
-profile = node[:workorder][:payLoad][:Environment][0][:ciAttributes][:profile].downcase
-Chef::Log.info("Got env profile as #{profile}")
-isProdEnv = "false"
-if profile.include? "prod"
-    Chef::Log.info("Deployment taking place in production environment")
-    isProdEnv = "true"
-end
-Chef::Log.info("Final isProdEnv= #{isProdEnv}")
-
 ### parse all tenants and make available for linkerd config template ###
-aTenant = []
+allTenants = []
   JSON.parse("#{node['service-mesh']['tenants']}").each do |l|
     larr = l.split(" ")
-    aTenant.push(larr)
+    allTenants.push(larr)
   end
+
+if allTenants.length < 1
+  Chef::Log.error("No tenant information was provided, cannot proceed with deployment")
+  exit 1
+end
 
 stratiAppName = ""
 tenantConfigs = ""
-aTenant.each do |a_tenant|
-    tenantConfigs = tenantConfigs + "  - appKey: #{a_tenant[0]}" + "\n    "
-    tenantConfigs = tenantConfigs + "envName: #{a_tenant[1]}\n    "
-    tenantConfigs = tenantConfigs + "ingressAddr: #{a_tenant[2]}\n"
+allTenants.each do |a_tenant|
+    if a_tenant.length < 2
+        Chef::Log.error("Incomplete tenant information was provided, cannot proceed with deployment. Please provide at-least application-key and environment-name for a tenant.")
+        exit 1
+    end
+    
+    tenantConfigs = tenantConfigs + "  - appKey: #{a_tenant[0]}" + "\n"
+    tenantConfigs = tenantConfigs + "    envName: #{a_tenant[1]}\n"
+    
+    if a_tenant.length > 2
+        Chef::Log::info("Got ingress address in the tenant input text")
+        tenantConfigs = tenantConfigs + "    ingressAddr: #{a_tenant[2]}\n"
+    end
+    
+    if a_tenant.length > 3
+        Chef::Log::info("Got ecv uri in the tenant input text")
+        tenantConfigs = tenantConfigs + "    ecvUri: #{a_tenant[3]}\n"
+    end
+    
     stratiAppName = "#{a_tenant[0]}-Mesh"
 end
 
 template linkerdConfigPath do
   source 'linkerd-sr-yaml.erb'
-  variables(:tenant_configs => "#{tenantConfigs}",
-            :sr_prod_url => "#{srUrlProd}",
-            :sr_nonprod_url => "#{srUrlNonprod}",
-            :is_prod_env => "#{isProdEnv}")
+  variables(:tenant_configs => "#{tenantConfigs}")
 end
 
 overriddenConfigYaml = node['service-mesh']['config-yaml']
@@ -113,7 +113,7 @@ template '/etc/init.d/servicemesh' do
   owner 'root'
   group 'root'
   mode 00755
-  variables(:start_mesh_command => "java -Dcom.twitter.util.events.sinkEnabled=false -Druntime.context.system.property.override.enabled=true -Druntime.context.appName=#{stratiAppName} #{node['service-mesh']['conf-override']} -jar #{meshLocalPath} #{linkerdConfigPath} > #{jobLogPath} 2>&1 &",
+  variables(:start_mesh_command => "java -Djava.net.preferIPv4Stack=true -Dsun.net.inetaddr.ttl=60 -XX:+UnlockExperimentalVMOptions -XX:+AggressiveOpts -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+CMSClassUnloadingEnabled -XX:+ScavengeBeforeFullGC -XX:+CMSScavengeBeforeRemark -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:-TieredCompilation -XX:+UseStringDeduplication -XX:+AlwaysPreTouch -Dcom.twitter.util.events.sinkEnabled=false -Dorg.apache.thrift.readLength=10485760 -Djdk.nio.maxCachedBufferSize=262144 -Dio.netty.threadLocalDirectBufferSize=0 -Dio.netty.recycler.maxCapacity=4096 -Dio.netty.allocator.numHeapArenas=${FINAGLE_WORKERS:-8} -Dio.netty.allocator.numDirectArenas=${FINAGLE_WORKERS:-8} -Dcom.twitter.finagle.netty4.numWorkers=${FINAGLE_WORKERS:-8} -Druntime.context.system.property.override.enabled=true -Druntime.context.appName=#{stratiAppName} #{node['service-mesh']['conf-override']} -jar #{meshLocalPath} #{linkerdConfigPath} > #{jobLogPath} 2>&1 &",
             :grep_string_mesh_process => "#{node['service-mesh']['service-mesh-root']}/soa-linkerd-#{node['service-mesh']['service-mesh-version']}.jar ")
 end
 
@@ -125,6 +125,12 @@ end
 
 ### Start Service Mesh process ###
 include_recipe "service-mesh::restart-service-mesh-process"
+
+### Wait for process to boot up ###
+Chef::Log.info("Waiting 30 seconds for mesh process to be up completely")
+execute 'delay' do
+  command 'sleep 30'
+end
 
 ### Verify if the process started successfully ###
 include_recipe "service-mesh::status"

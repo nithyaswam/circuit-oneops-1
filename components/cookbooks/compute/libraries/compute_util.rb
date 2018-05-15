@@ -32,12 +32,16 @@ def get_enabled_network(compute_service,attempted_networks)
   # net_id for specifying network to use via subnet attr
   net_id = ''
   begin
+    domain = compute_service.key?('domain') ? compute_service[:domain] : 'default'
+    
     quantum = Fog::Network.new({
       :provider => 'OpenStack',
       :openstack_api_key => compute_service[:password],
       :openstack_username => compute_service[:username],
       :openstack_tenant => compute_service[:tenant],
-      :openstack_auth_url => compute_service[:endpoint]
+      :openstack_auth_url => compute_service[:endpoint],
+      :openstack_project_name => compute_service[:tenant],
+      :openstack_domain_name => domain
     })
 
     quantum.networks.each do |net|
@@ -71,9 +75,11 @@ end
 
 def find_latest_fast_image(images, pattern, pattern_snap)
   return_image = nil
+  if pattern_snap.nil?
+    pattern_snap = /(?!x)x/
+  end
   images.each do |image|
-    # check if valid
-    if image.name =~ /#{pattern}/i && image.name !~ /#{pattern_snap}/i
+    if image.name =~ pattern && image.name !~ pattern_snap && image.name !~ /-raw/i
       # break up name into its parts
       image_name_parts = image.name.split('-')
 
@@ -94,13 +100,13 @@ def find_latest_fast_image(images, pattern, pattern_snap)
   return return_image
 end
 
-# Returns the image object from Openstack
-# Looks up by name if global flag is set and flavor is not baremetal
-# Reverts to image id lookup if no Fast Image is found by name
 def get_image(images, flavor, flag_FAST_IMAGE, flag_TESTING_MODE, default_image, custom_id, ostype)
   if flag_FAST_IMAGE.to_s.downcase == "true" && (flavor.nil? || flavor.name.downcase !~ /baremetal/i) && !custom_id
-    pattern = "wmlabs-#{ostype.gsub(/\./, "")}"
-    flag_TESTING_MODE.to_s.downcase == "true" ? pattern_snap = "RandomString" : pattern_snap = "snapshot"
+    pattern = /[a-zA-Z]{1,20}-#{ostype.gsub(/\./, "")}-\d{4}-v\d{8}-\d{4}/i
+
+    # if testing mode true; consider snapshots but still take the latest image
+    # else do not consider snapshots
+    flag_TESTING_MODE.to_s.downcase == "true" ? pattern_snap = nil : pattern_snap = /snapshot/i
     return_image = find_latest_fast_image(images, pattern, pattern_snap)
 
     if return_image.nil?

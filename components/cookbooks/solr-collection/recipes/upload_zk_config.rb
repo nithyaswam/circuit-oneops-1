@@ -36,7 +36,7 @@ custom_config_dir = "custom-tmp-dir"
 custom_dir_full_path = "#{solr_config}"+"/#{custom_config_dir}"
 
 
-# Check if url for the zk config is provided, then use the nexu path to upload the zk config,
+# Check if url for the zk config is provided, then use the nexus path to upload the zk config,
 # otherwise try to use the config which is provided by the user in the config_name field
 if node.has_key?("zk_config_urlbase") && !node["zk_config_urlbase"].empty?
 
@@ -107,7 +107,7 @@ if node.has_key?("zk_config_urlbase") && !node["zk_config_urlbase"].empty?
 
     ruby_block 'update_solrconfig' do
       block do
-        update_solrconfig_and_override_properties("#{solr_config}/#{custom_config_dir}/solrconfig.xml", props_map)
+        update_solrconfig_and_override_properties("#{solr_config}/#{custom_config_dir}/solrconfig.xml", props_map, true)
       end
     end
 
@@ -123,13 +123,14 @@ if node.has_key?("zk_config_urlbase") && !node["zk_config_urlbase"].empty?
   end
 
 else
+  solrconfig_contains_update_processor_chain = true
   downloadDefaultConfig(node['solr_version'], node['zk_host_fqdns'], config_name, custom_dir_full_path)
   if File.directory?("#{custom_dir_full_path}")
     ruby_block 'update_solrconfig' do
       block do
         FileUtils.cp("#{custom_dir_full_path}/solrconfig.xml", "#{custom_dir_full_path}/solrconfig.xml.tmp")
         props_map = get_prop_metadata_for_solrconfig_update()
-        update_solrconfig_and_override_properties("#{custom_dir_full_path}/solrconfig.xml.tmp", props_map)
+        solrconfig_contains_update_processor_chain = update_solrconfig_and_override_properties("#{custom_dir_full_path}/solrconfig.xml.tmp", props_map, solrconfig_contains_update_processor_chain)
       end
     end
 
@@ -142,7 +143,7 @@ else
     ruby_block 'upload_solrconfig_if_changes_found' do
       block do
         if not File.zero? "/tmp/diff_solrconfig.xml.txt"
-          Chef::Log.info("After applying the configuration from the solr-collectino component, we found some changes in the configuration. So uploading the updated configuration to ZK.")
+          Chef::Log.info("After applying the configuration from the solr-collection component, we found some changes in the configuration. So uploading the updated configuration to ZK.")
           FileUtils.mv("#{custom_dir_full_path}/solrconfig.xml.tmp", "#{custom_dir_full_path}/solrconfig.xml")
           validate_and_upload_config_jar_contents("#{custom_dir_full_path}", "#{config_name}")
           run_reload_collection(node['collection_name'], node['port_num'])
@@ -156,6 +157,11 @@ else
       end
     end
 
+    # check if initParams has a default processor from defined updateRequestProcessorChains defined in the solrconfig
+    # if solrconfig_contains_update_processor_chain
+    #   check_default_chain_is_set()
+    # end
+    
   end
 
   bash 'remove_config_dir' do

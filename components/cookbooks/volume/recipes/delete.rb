@@ -69,7 +69,11 @@ if rfcAttrs.has_key?("mount_point") && !rfcAttrs["mount_point"].empty?
       only_if { has_mounted }
     end
 
-    execute "umount -Rf #{mount_point}" do
+    umount_cmd = "umount -Rf #{mount_point}"
+    if node['platform_family'] == 'rhel' && node['platform_version'].to_i < 7
+      umount_cmd = "umount -f #{mount_point}"
+    end
+    execute umount_cmd do
       only_if { has_mounted }
     end
 

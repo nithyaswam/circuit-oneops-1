@@ -50,18 +50,18 @@ module AzureNetwork
       OOLog.info("Deleting public IP '#{public_ip_name}' from '#{resource_group_name}' ")
       start_time = Time.now.to_i
       begin
-        public_ip = @network_client.public_ips.get(resource_group_name, public_ip_name)
-        result = !public_ip.nil? ? public_ip.destroy : Chef::Log.info('AzureNetwork::PublicIp - 404 code, trying to delete something that is not there.')
+        public_ip_exists = @network_client.public_ips.check_public_ip_exists(resource_group_name, public_ip_name)
+        if !public_ip_exists
+          OOLog.info("The Public IP #{public_ip_name} does not exist. Moving on...")
+          result = nil
+        else
+          public_ip = @network_client.public_ips.get(resource_group_name, public_ip_name)
+          result = !public_ip.nil? ? public_ip.destroy : Chef::Log.info('AzureNetwork::PublicIp - 404 code, trying to delete something that is not there.')
+        end
       rescue MsRestAzure::AzureOperationError => e
         OOLog.fatal("Error deleting PublicIP '#{public_ip_name}' in ResourceGroup '#{resource_group_name}'. Exception: #{e.body}")
       rescue => e
-        if e.to_s =~ %r/Resource group \S+ could not be found./ 
-          OOLog.info("The Resource Group #{resource_group_name} does not exist. Moving on...")
-        elsif e.to_s =~ %r/The Resource \S+ under resource group \S+ was not found./
-          OOLog.info("The Public IP #{public_ip_name} does not exist. Moving on...")
-        else
-          OOLog.fatal("Error deleting PublicIP '#{public_ip_name}' in ResourceGroup '#{resource_group_name}'. Exception: #{e.message}")
-        end
+        OOLog.fatal("Error deleting PublicIP '#{public_ip_name}' in ResourceGroup '#{resource_group_name}'. Exception: #{e.message}")
       end
       end_time = Time.now.to_i
       duration = end_time - start_time

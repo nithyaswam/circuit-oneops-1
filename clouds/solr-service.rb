@@ -21,9 +21,11 @@ service 'solr-service',
               "snapshot_urlbase": "",
               "solr_custom_comp_artifact": "",
               "slow_query_logger": "",
+              "delete_query_logger": "",
               "jetty_filter_url": "",
               "config_url_v5": "",
               "config_url_v6": "",
-              "config_url_v7": ""
+              "config_url_v7": "",
+              "solr_monitor_artifact": ""
             }'
         }

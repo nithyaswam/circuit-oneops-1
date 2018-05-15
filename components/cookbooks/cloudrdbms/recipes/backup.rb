@@ -124,7 +124,7 @@ ruby_block 'validate_complete' do
             if return_code_curl != 0
               puts "Exit status: $?.exitstatus"
               raise RuntimeError, "Some error happened while trying to get the status"
-            elsif ( status == "RUNNING" ) || ( status == "ENQUEUED" )
+            elsif ( status == "RUNNING" ) || ( status == "ENQUEUED" ) || ( status == "STARTING" )
               curlComplete = 0
               curlAttempt += 1
               Chef::Log.info("CloudRDBMS attempt #{curlAttempt} of 360 on instanceID(#{instanceId}), current status is #{status}.")

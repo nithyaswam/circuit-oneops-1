@@ -26,6 +26,7 @@ rdhj3563-563d-563d-563d-rdhj3563xfgh,W2K12R2_DC_x64_cygwin RC4
 rdhj3563-563d-563d-563d-rdhj3563xfgh,W2K12R2_DC_x64_cygwin_VS12
 rdhj3563-563d-563d-563d-rdhj3563xfgh,W2K12R2_DC_x64_cygwin_VS15
 rdhj3563-563d-563d-563d-rdhj3563xfgh,W2K16DCx64_cygwin RC4
-rdhj3563-563d-563d-563d-rdhj3563xfgh,wmlabs-centos-73-1611-v20180309-1632-snapshot
-rdhj3563-563d-563d-563d-rdhj3563xfgh,wmlabs-centos-73-1611-v20180309-1107
-rdhj3563-563d-563d-563d-rdhj3563xfgh,wmlabs-centos-73-1611-v20180309-1531
+rdhj3563-563d-563d-563d-rdhj3563xfgh,randos-someos-10-6969-v20180309-7651-snapshot
+rdhj3563-563d-563d-563d-rdhj3563xfgh,randos-someos-10-6969-v20190309-1567-snapshot
+rdhj3563-563d-563d-563d-rdhj3563xfgh,randos-someos-10-6969-v20180309-7651
+rdhj3563-563d-563d-563d-rdhj3563xfgh,randos-someos-10-6969-v20190309-1567

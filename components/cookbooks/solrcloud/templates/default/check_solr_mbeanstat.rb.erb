@@ -47,29 +47,33 @@ if monitor == "MemoryStats"
 
   perf = nil
 
-  if !coll_list.empty?
+  if coll_list != nil then
     parsed_coll_list = JSON.parse(coll_list)
     collections =  parsed_coll_list["collections"]
 
-    if (auth_enabled?)
+    if !collections.empty?
+
+      if (auth_enabled?)
         system_stats = `curl --user  #{username}:#{password}  -s "http://127.0.0.1:#{port_no}/solr/#{collections[0]}/admin/system?stats=true&wt=json"`
         puts "curl --user #{username}:****** -s http://127.0.0.1:#{port_no}/solr/#{collections[0]}/admin/system?stats=true&wt=json"
-    else
-      system_stats = `curl -s "http://127.0.0.1:#{port_no}/solr/#{collections[0]}/admin/system?stats=true&wt=json"`
-      puts "curl -s http://127.0.0.1:#{port_no}/solr/#{collections[0]}/admin/system?stats=true&wt=json"
+      else
+        system_stats = `curl -s "http://127.0.0.1:#{port_no}/solr/#{collections[0]}/admin/system?stats=true&wt=json"`
+        puts "curl -s http://127.0.0.1:#{port_no}/solr/#{collections[0]}/admin/system?stats=true&wt=json"
+      end
+
+      parsed_system_stats = JSON.parse(system_stats)
+
+      memory_free = parsed_system_stats['system']['freePhysicalMemorySize'].to_i
+      memory_total = parsed_system_stats['system']['totalPhysicalMemorySize'].to_i
+
+      used = memory_total.to_i - memory_free.to_i
+      percentUsed = used.to_f / memory_total.to_f * 100
+
+      perf = "freeMemory=#{memory_free} totalMemory=#{memory_total} percentUsed=#{percentUsed}"
+      puts perf + "|" + perf
     end
-
-    parsed_system_stats = JSON.parse(system_stats)
-
-    memory_free = parsed_system_stats['system']['freePhysicalMemorySize'].to_i
-    memory_total = parsed_system_stats['system']['totalPhysicalMemorySize'].to_i
-
-    used = memory_total.to_i - memory_free.to_i
-    percentUsed = used.to_f / memory_total.to_f * 100
-
-    perf = "freeMemory=#{memory_free} totalMemory=#{memory_total} percentUsed=#{percentUsed}"
-    puts perf + "|" + perf
   end
+
 elsif monitor == "ReplicaStatus"
   begin
     pctgActiveReplicas, pctgRecoveringReplicas, pctgDownReplicas, pctgFailedReplicas = checkSolrNodeStatus(port_no)

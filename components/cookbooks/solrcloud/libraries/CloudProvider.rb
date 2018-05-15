@@ -12,10 +12,8 @@ class CloudProvider
     @cloud_name = node[:workorder][:cloud][:ciName]
     Chef::Log.info("@cloud_name : #{@cloud_name}")
     
-    #extract cloud provider 'Openstack/Azure' from compute service string {"prod-cdc5":{"ciClassName":"cloud.service.Openstack"}}
-    #Chef::Log.info("node[:workorder][:services][:compute] = #{node[:workorder][:services][:compute].to_json}")
-    @cloud_provider = node[:workorder][:services][:compute][@cloud_name][:ciClassName].gsub("cloud.service.","").downcase.split(".").last
-    Chef::Log.info("Cloud Provider: #{@cloud_provider}")
+    @cloud_provider = self.class.get_cloud_provider_name(node)
+    Chef::Log.info("Initializing Cloud Provider : #{@cloud_provider}")
     
     # Replica distribution varies based on cloud provider. For ex. with 'Openstack' cloud provider, we distribute replicas across clouds and witn 'Azure', 
     # replicas are distributes across domains. If no cloud provider in payload, then error out. 
@@ -43,8 +41,8 @@ class CloudProvider
         end
         @zone_name = "#{@fault_domain}___#{@update_domain}"
         Chef::Log.info("@zone_name : #{@zone_name}")
-        # in case of azure, key -> zone i.e. fault_domain_update_domain. ex 1_1
-        @zone_to_compute_ip_map = get_compute_zone_to_compute_ip_map(node)
+        # in case of azure, key -> fault_domain
+        @zone_to_compute_ip_map = get_fault_domain_to_compute_ip_map(node)
       else #/vagrant/
         # in case of other (openstack), key -> cloud_name ex. prod-cdc5
         @zone_to_compute_ip_map = get_cloud_name_to_compute_ip_map(node)
@@ -66,7 +64,7 @@ class CloudProvider
     Chef::Log.info "cloud_id_to_name_map = #{cloud_id_to_name_map.to_json}"
 
     cloud_name_to_ip_map = Hash.new()
-    computes = get_computes_payload(node)
+    computes = self.class.get_computes_payload(node)
     computes.each do |compute|
       
       # compute[:ciName] == nil meaning compute has not provisioned yet
@@ -92,36 +90,68 @@ class CloudProvider
     return cloud_name_to_ip_map
   end
 
-  # get domain and computes map information from the payload
-  # where key-> <fauld_domain>_<update_domain> & value-> list of ips
-  # For ex. {"1_1":[ip1, ip2],"1_2":[ip3, ip4]}
-  def get_compute_zone_to_compute_ip_map(node)
-    #define map with key as <fault_domain>_<update_domain>. ex=>1_1, 1_2 and value=>[ip1,ip2]
-    zone_to_ips_map = Hash.new
-    computes = get_computes_payload(node)
+  # get fault domain and computes map information from the payload
+  #[
+  #  {
+  #    "ciAttributes": {
+  #      "private_ip": "ip1",
+  #      "zone": {
+  #        "fault_domain": 0,
+  #        "update_domain": 1
+  #      }
+  #    }
+  #  },
+  #  {
+  #    "ciAttributes": {
+  #      "private_ip": "ip2",
+  #      "zone": {
+  #        "fault_domain": 1,
+  #        "update_domain": 2
+  #      }
+  #    }
+  #  },
+  #  {
+  #    "ciAttributes": {
+  #      "private_ip": "ip3",
+  #      "zone": {
+  #        "fault_domain": 0,
+  #        "update_domain": 3
+  #      }
+  #    }
+  #  },
+  #  {
+  #    "ciAttributes": {
+  #      "private_ip": "ip4",
+  #      "zone": {
+  #        "fault_domain": 1,
+  #        "update_domain": 4
+  #      }
+  #    }
+  #  }
+  #]
+  # This method returns the result as {0=>["ip1","ip3"],1=>["ip2","ip4"]}
+  def get_fault_domain_to_compute_ip_map(node)
+    
+    fault_domain_to_ip_map = Hash.new
+    computes = self.class.get_computes_payload(node)
 
     computes.each do |compute|
-
-      # each compute's ciAttribute must have zone info like "zone": "{\"fault_domain\":0,\"update_domain\":0}"
+      next if compute[:ciAttributes][:private_ip].nil?
       if zone_info_missing?(compute)
         raise "Zone attrribute with fault_domain/update_domain information is required."
       end
-
-      # get <fault_domain>_<update_domain> e. 0_1
-      zone_info = get_zone_info(compute)
-
-      # add zone_info as key if doesn't exists
-      ip = compute[:ciAttributes][:private_ip]
-      if !zone_to_ips_map.has_key?(zone_info)
-        zone_to_ips_map[zone_info] = []
+      zone  = JSON.parse(compute['ciAttributes']['zone'])
+      fault_domain = zone['fault_domain']
+      if !fault_domain_to_ip_map.has_key?fault_domain
+        fault_domain_to_ip_map[fault_domain] = []
       end
-      # add ip to zone_info
-      zone_to_ips_map[zone_info].push ip
+      fault_domain_to_ip_map[fault_domain].push compute[:ciAttributes][:private_ip]
     end
-    Chef::Log.info("zone_to_ips_map = #{zone_to_ips_map.to_json}")
-    return zone_to_ips_map
+    
+    Chef::Log.info("fault_domain_to_ip_map = #{fault_domain_to_ip_map.to_json}")
+    return fault_domain_to_ip_map
   end
-
+  
   def get_zone_to_compute_ip_map()
     return @zone_to_compute_ip_map
   end
@@ -147,16 +177,26 @@ class CloudProvider
   end
 
   # get compute payload from workorder
-  def get_computes_payload(node)
+  def self.get_computes_payload(node)
     return node.workorder.payLoad.has_key?("RequiresComputes") ? node.workorder.payLoad.RequiresComputes : node.workorder.payLoad.computes
   end
   
+  # This method may be called from solrcloud or solr-collection recipe and both resources in pack has cloud payload with
+  # different names. for ex. solrcloud's cloud payload has name 'CloudPayload' & solr-collection's cloud payload is 'Clouds'
+  # hence it should fetch the payload with name 'Clouds' if it exists otherwise 'CloudPayload'
   def get_clouds_payload(node)
-    return node.workorder.payLoad.has_key?("Clouds") ? node.workorder.payLoad.Clouds : nil
+    return node.workorder.payLoad.has_key?("Clouds") ? node.workorder.payLoad.Clouds : (node.workorder.payLoad.has_key?("CloudPayload") ? node.workorder.payLoad.CloudPayload : nil)
   end
   
+  #extract cloud provider 'Openstack/Azure' from compute service string {"prod-cdc5":{"ciClassName":"cloud.service.Openstack"}}
   def self.get_cloud_provider_name(node)
+    #Chef::Log.info("node[:workorder][:services][:compute] = #{node[:workorder][:services][:compute].to_json}")
     cloud_name = node[:workorder][:cloud][:ciName]
+    if !node[:workorder][:services].has_key?("compute")
+      error = "compute service is missing in the cloud services list, please make sure to do pull pack and design pull so that compute service becomes available"
+      puts "***FAULT:FATAL=#{error}"
+      raise error
+    end
     cloud_provider_name = node[:workorder][:services][:compute][cloud_name][:ciClassName].gsub("cloud.service.","").downcase.split(".").last
     Chef::Log.info("Cloud Provider: #{cloud_provider_name}")
     return cloud_provider_name

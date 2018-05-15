@@ -3,7 +3,7 @@ $circuit_path = "#{is_windows ? 'C:/Cygwin64' : ''}/home/oneops"
 require "#{$circuit_path}/circuit-oneops-1/components/spec_helper.rb"
 
 OBJECTSTORE_EXE_FILE   = '/usr/local/bin/objectstore'.freeze
-OBJECTSTORE_CREDS_FILE = '/etc/objectstore_creds.json'.freeze
+OBJECTSTORE_CREDS_FILE = '/etc/objectstore_config.json'.freeze
 
 TEST_CONTAINER_NAME    = "test-#{$node['workorder']['rfcCi']['rfcId']}".freeze
 TEST_CONTAINER_NAME_2    = "test-#{$node['workorder']['rfcCi']['rfcId']}-2".freeze

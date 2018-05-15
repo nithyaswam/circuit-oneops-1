@@ -17,11 +17,8 @@ directory solr_pack_dir do
   mode '0755'
   action :create
 end
-# create /app/solr_pack/deployment_status.txt to track the deployment progress
-file "#{solr_pack_dir}/deployment_status.txt" do
+# create /opt/solr/deployment_status.txt to track the deployment progress
+file "/opt/solr/deployment_status.txt" do
   content deployment_status_file_contents
-  owner 'root'
-  group 'root'
-  mode '0755'
   action :create
 end

@@ -20,8 +20,8 @@ attribute 'solr_version',
     :help => 'Select the specific version to set up solrcloud. Be sure the artifact uploaded to mirror repository',
     :category => '1.SolrCloud',
     :form => {'field' => 'select', 'options_for_select' => [
-       ['6.6.0 (Deprecated)', '6.6.0'],
-       ['7.1.0 (Deprecated)', '7.1.0'],  ['7.2.1', '7.2.1']
+       ['6.4.2 (Deprecated)', '6.4.2'], ['6.6.0 (Deprecated)', '6.6.0'],
+       ['7.2.1', '7.2.1'], ['7.3.0 (Not tested yet)', '7.3.0']
     ]},
     :order => 4
   }
@@ -281,6 +281,17 @@ attribute 'solr_custom_component_version',
               :help => 'Enter Version number example: 0.0.1, 0.0.1-SNAPSHOT',
               :category => '7.Solr Custom Component',
               :order => 33
+          }
+
+# Solr Monitor Specific Attributes
+attribute 'solr_monitor_version',
+          :description => 'Version of jar file with Solr Metrics',
+          :default => '1.0.3',
+          :required => 'required',
+          :format => {
+              :help => 'Expects a version of a jar file whose artifact is com.walmart.strati.af.df.managed_solr.solrmonitor:solrcloud-oneops-metrics. Example: 0.0.1, 1.0.2 etc',
+              :category => '2.SolrCloud Monitoring',
+              :order => 34
           }
 
 # Attribute visible only in the Operations phase because of grouping-type bom

@@ -44,7 +44,7 @@ broker.rack=2
 <% else %>
 broker.rack=<%= JSON.parse(node.workorder.payLoad.ManagedVia[0][:ciAttributes][:zone])['fault_domain'] %>
 <% end %>
-<% elsif (node.workorder.cloud.ciName.include? "azure") %>
+<% elsif (node.workorder.cloud.ciName.include? "-az") %>
 broker.rack=<%= JSON.parse(node.workorder.payLoad.ManagedVia[0][:ciAttributes][:zone])['fault_domain'] %>
 <% else %>
 broker.rack=<%= node.workorder.cloud.ciName %>

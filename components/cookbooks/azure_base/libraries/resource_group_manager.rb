@@ -74,12 +74,33 @@ module AzureBase
 
     # This method will delete the resource group
     def delete
-      begin
+      rg_exists = @resource_client.resource_groups.check_resource_group_exists(@rg_name)
+      if !rg_exists
+        OOLog.info("The Resource Group #{@rg_name} does not exist. Moving on...")
+      else
         @resource_client.resource_groups.get(@rg_name).destroy
+      end
+    end
+
+    def list_resources
+      require 'azure_mgmt_resources'
+
+      token_provider = MsRestAzure::ApplicationTokenProvider.new(@creds[:tenant_id], @creds[:client_id], @creds[:client_secret])
+      credentials = MsRest::TokenCredentials.new(token_provider)
+      client = Azure::ARM::Resources::ResourceManagementClient.new(credentials)
+      client.subscription_id = @creds[:subscription_id]
+
+      client.resource_groups.list_resources(@rg_name)
+    end
+
+    # This method will get the resource group
+    def get
+      begin
+        @resource_client.resource_groups.get(@rg_name)
       rescue MsRestAzure::AzureOperationError => e
-        OOLog.fatal("Error deleting resource group: #{e.body}")
+        OOLog.fatal("Error getting resource group: #{e.body}")
       rescue => ex
-        OOLog.fatal("Error deleting resource group: #{ex.message}")
+        OOLog.fatal("Error getting resource group: #{ex.message}")
       end
     end
 

@@ -153,7 +153,7 @@ resource "solrcloud",
   :attributes => {
     'jmx_port' => '$OO_LOCAL{solr_jmx_port}',
     'jolokia_port' => '$OO_LOCAL{jolokia_port}',
-    'solr_version' => '7.1.0',
+    'solr_version' => '7.2.1',
     'gc_log_params' => '',
     'zk_client_timeout' => '60000',
     'enable_jmx_metrics' => 'true',
@@ -169,7 +169,8 @@ resource "solrcloud",
     'skip_solrcloud_comp_execution' => 'false',
     'enable_cinder' => 'true',
     'solr_custom_component_version' => '0.0.3',
-    'solr_api_timeout_sec' => '300'
+    'solr_api_timeout_sec' => '300',
+    'solr_monitor_version' => '1.0.3'
   },
 
   :monitors => {
@@ -187,6 +188,21 @@ resource "solrcloud",
         'SolrProcessDown' => threshold('1m', 'avg', 'up', trigger('<=', 98, 10, 5), reset('>', 95, 2, 1), 'unhealthy')
       }
     },
+    'SolrMetricsMonitorCheck' => {
+        :description => 'SolrMetricsMonitoring',
+        :source => '',
+        :chart => {'min' => '0', 'max' => '100', 'unit' => 'Percent'},
+        :cmd => 'check_solr_metrics_monitor',
+        :cmd_line => '/opt/nagios/libexec/check_solr_metrics_monitor.sh',
+        :metrics => {
+            'up' => metric(:unit => '%', :description => 'Percent Up')
+        },
+        :thresholds => {
+            # Trigger alarm if value goes below 75 for 8 times in a 10 minute window
+            # # Reset alarm if value goes above 75 for 1 time in a 2 minute window
+            'SolrMetricsMonitoringDown' => threshold('1m', 'avg', 'up', trigger('<=', 75, 10, 8), reset('>', 75, 2, 1))
+        }
+    },
     'SolrZKConnectionCheck' => {
       :description => 'SolrZKConnection',
       :source => '',
@@ -197,7 +213,9 @@ resource "solrcloud",
         'up' => metric(:unit => '%', :description => 'Percent Up')
       },
       :thresholds => {
-        'SolrZKConnectionDown' => threshold('1m', 'avg', 'up', trigger('<=', 75, 2, 1), reset('>', 80, 2, 1))
+        # Trigger alarm if value goes below 75 for 8 times in a 10 minute window
+        # Reset alarm if value goes above 75 for 1 time in a 2 minute window
+        'SolrZKConnectionDown' => threshold('1m', 'avg', 'up', trigger('<=', 75, 10, 8), reset('>', 75, 2, 1))
       }
     },
     'MemoryStats' =>  {
@@ -657,7 +675,7 @@ resource "solr-collection",
         'pctgShardsUp' => metric( :unit => '%', :description => 'Percentage of Shards UP', :dstype => 'GAUGE')
       },
       :thresholds => {
-        'pctgShardsWithMinActiveReplicas' => threshold('1m','avg','pctgShardsWithMinActiveReplicas',trigger('<',100,2,1),reset('=',100,2,1))
+        'pctgShardsWithMinActiveReplicas' => threshold('1m','avg','pctgShardsWithMinActiveReplicas',trigger('<',100,5,4),reset('=',100,2,1))
       }
     },
     'ReplicaDistributionStatus' =>  {

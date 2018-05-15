@@ -38,24 +38,12 @@ gems:
   - mime-types
   - rack
 files:
-  - name: /home/oneops/shared
-    type: d
-    mode: 755
-    owner: oneops
-    group: oneops
-# --------------------------------------- item break to make it easier to read.
   - name: /etc/nagios/conf.d
     type: d
     mode: 750
     owner: nagios
     group: nagios
-# ---------------------------------------
-  - name: /home/oneops/circuit-oneops-1
-    type: d
-    mode: 755
-    owner: oneops
-    group: oneops
-# ---------------------------------------
+# --------------------------------------- item break to make it easier to read.
 #  - name: /opt/oneops/workorder
 #    type: d
 #    mode: 755

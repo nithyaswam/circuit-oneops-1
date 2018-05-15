@@ -70,8 +70,12 @@ module AzureCompute
       begin
         OOLog.info("Deleting VM '#{vm_name}' in '#{resource_group_name}' ")
         start_time = Time.now.to_i
-        virtual_machine = get(resource_group_name, vm_name)
-        virtual_machine.destroy
+        virtual_machine_exists = @compute_service.servers.check_vm_exists(resource_group_name, vm_name)
+        if !virtual_machine_exists
+          OOLog.info("Virtual Machine '#{vm_name}' was not found in '#{resource_group_name}', skipping deletion..")
+        else
+          virtual_machine = get(resource_group_name, vm_name).destroy
+        end
         end_time = Time.now.to_i
         duration = end_time - start_time
       rescue RuntimeError => e
