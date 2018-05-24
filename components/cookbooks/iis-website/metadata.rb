@@ -79,6 +79,90 @@ attribute 'binding_type',
                   }
   }
 
+  attribute 'cert_auto_provision'
+    :description => 'Auto Provision Certificate',
+    :default     => 'false'
+    :format      => {
+      :help      =>  'Auto provision the cert using Certificate Service',
+      :category  =>  '2.IIS Web site',
+      :form      => { 'field' => 'checkbox' },
+      :filter    => {'all'    => {'visible' => 'binding_type:eq:https'}},
+      :order     => 4
+    }
+
+  attribute 'cert_common_name',
+    :description => "Common Name",
+    :default     => "",
+    :format      => {
+      :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:true && binding_type:eq:https'}},
+      :help      => 'Enter the common name for the certificate to be provisioned',
+      :category  => '2.IIS Web site',
+      :order     => 5
+    }
+
+  attribute 'cert_passphrase',
+    :description => "Pass Phrase",
+    :default     => "",
+    :format      => {
+      :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:true && binding_type:eq:https'}},
+      :help      => 'Enter the passphrase for the certificate key',
+      :category  => '2.IIS Web site',
+      :order     => 6
+    }
+
+  attribute 'cert_ssl_data',
+    :description => "Certificate Data",
+    :default     => "",
+    :format      => {
+      :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:false && binding_type:eq:https'}},
+      :help      => 'Enter the base-64 encoded form of the .pfx file.',
+      :category  => '2.IIS Web site',
+      :order     => 5
+    }
+
+  attribute 'cert_ssl_password',
+    :description => "Certificate Password",
+    :encrypted   => true,
+    :default     => "",
+    :format      => {
+      :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:false && binding_type:eq:https'}},
+      :help      => 'Enter password for a .pfx certificate.',
+      :category  => '2.IIS Web site',
+      :order => 6
+    }
+
+  attribute 'cert_domain',
+    :description => "Domain Name",
+    :default     => "walmart.com",
+    :format      => {
+      :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:true && binding_type:eq:https'}},
+      :help      => 'Required for internet facing cert. Optional field if requesting internal certificate',
+      :category  => '2.IIS Web site',
+      :order     => 7
+    }
+
+  attribute 'cert_owner_email',
+    :description => "Application Owner Email DL (Mandatory)",
+    :default     => "",
+    :format      => {
+      :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:true && binding_type:eq:https'}},
+      :help      => 'Email alias of the application team that owns this certificate',
+      :category  => '2.IIS Web site',
+      :pattern   => "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}",
+      :order     => 8
+    }
+
+  attribute 'cert_san',
+    :description => "Subject Alternative Name",
+    :data_type   => 'array',
+    :default     => "",
+    :format      => {
+      :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:true && binding_type:eq:https'}},
+      :help      => 'Enter the SANs (Subject Alternative Names) for the certificate to be provisioned',
+      :category  => '2.IIS Web site',
+      :order     => 9
+    }
+
 attribute 'binding_port',
   :description => 'Binding Port',
   :default     => '80',
@@ -86,7 +170,7 @@ attribute 'binding_port',
   :format      => {
     :help      => 'IIS binding port',
     :category  => '2.IIS Web site',
-    :order     => 4
+    :order     => 10
   }
 
 attribute 'windows_authentication',
@@ -96,7 +180,7 @@ attribute 'windows_authentication',
     :help      => 'Enable windows authentication',
     :category  => '2.IIS Web site',
     :form     => {'field' => 'checkbox'},
-    :order     => 5
+    :order     => 11
   }
 
 attribute 'anonymous_authentication',
@@ -106,7 +190,7 @@ attribute 'anonymous_authentication',
     :help      => 'Enable anonymous authentication',
     :category  => '2.IIS Web site',
     :form     => {'field' => 'checkbox'},
-    :order     => 6
+    :order     => 12
   }
 
 attribute 'iis_iusrs_group_service_accounts',
@@ -116,7 +200,7 @@ attribute 'iis_iusrs_group_service_accounts',
   :format      => {
     :help      => 'Add Service Accounts to the IIS_IUSRS Group',
     :category  => '2.IIS Web site',
-    :order     => 7
+    :order     => 13
   }
 
 attribute 'iisreset_before_deployment',
@@ -126,7 +210,7 @@ attribute 'iisreset_before_deployment',
     :help      => 'Specify whether to do IISReset before deploy',
     :category  => '2.IIS Web site',
     :form     => {'field' => 'checkbox'},
-    :order     => 8
+    :order     => 14
   }
 
 attribute 'iisreset_after_deployment',
@@ -136,7 +220,7 @@ attribute 'iisreset_after_deployment',
     :help      => 'Specify whether to do IISReset after deploy',
     :category  => '2.IIS Web site',
     :form     => {'field' => 'checkbox'},
-    :order     => 9
+    :order     => 15
   }
 
 attribute 'enabled',
