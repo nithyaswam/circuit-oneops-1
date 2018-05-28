@@ -79,9 +79,9 @@ attribute 'binding_type',
                   }
   }
 
-  attribute 'cert_auto_provision'
-    :description => 'Auto Provision Certificate',
-    :default     => 'false'
+  attribute 'cert_auto_provision',
+    :description => "Auto Provision Certificate",
+    :default     => 'false',
     :format      => {
       :help      =>  'Auto provision the cert using Certificate Service',
       :category  =>  '2.IIS Web site',
@@ -102,6 +102,7 @@ attribute 'binding_type',
 
   attribute 'cert_passphrase',
     :description => "Pass Phrase",
+    :encrypted => true,
     :default     => "",
     :format      => {
       :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:true && binding_type:eq:https'}},
@@ -112,6 +113,7 @@ attribute 'binding_type',
 
   attribute 'cert_ssl_data',
     :description => "Certificate Data",
+    :data_type   => "text",
     :default     => "",
     :format      => {
       :filter    => {'all' => {'visible' => 'cert_auto_provision:eq:false && binding_type:eq:https'}},

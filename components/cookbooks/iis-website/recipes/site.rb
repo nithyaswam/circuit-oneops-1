@@ -23,10 +23,11 @@ end
 website_physical_path = physical_path
 heartbeat_path = "#{physical_path}/heartbeat.html"
 
-ssl_certificate_exists = false
 thumbprint = ''
+Chef::Log.info "variable values - #{binding_type} and  #{site.cert_auto_provision}"
 if binding_type == 'https'
     if site.cert_auto_provision == 'true'
+        Chef::Log.info "checking if certificate service exists"
         cloud_name = node[:workorder][:cloud][:ciName]
         provider = ""
         cert_service = node[:workorder][:services][:certificate]
@@ -35,7 +36,7 @@ if binding_type == 'https'
             provider = node[:workorder][:services][:certificate][cloud_name][:ciClassName].gsub("cloud.service.","").downcase.split(".").last
         else
             Chef::Log.error("Certificate cloud service not defined for this cloud")
-+           exit 1
+            exit 1
         end
 
         certificate = Hash.new
@@ -52,9 +53,9 @@ if binding_type == 'https'
         ssl_data = node[:pfx_cert]
         ssl_password = site.cert_passphrase
     else
-        ssl_data = cert[:ciAttributes][:ssl_data]
-        ssl_password = cert[:ciAttributes][:ssl_password]
-        ssl_certificate_exists = true
+        ssl_data = site.cert_ssl_data
+        ssl_password = site.cert_ssl_password
+
     end
     cert = OpenSSL::X509::Certificate.new(ssl_data)
     thumbprint = OpenSSL::Digest::SHA1.new(cert.to_der).to_s
