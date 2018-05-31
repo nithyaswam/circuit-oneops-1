@@ -79,6 +79,20 @@ resource "chocopackage",
     "chocolatey_package_source" => 'https://chocolatey.org/api/v2/'
   }
 
+  resource "baas",
+   :cookbook      => "oneops.1.baas-windows",
+   :design        => true,
+   :requires      => {
+     :constraint  => "0..1",
+     :help        => "Installs nuget and chocolatey package for baas",
+     :services    => "*dotnet-platform"
+   },
+   :attributes       => {
+     "repository_url" => '',
+     "package_name" =>'',
+     "version" => ''
+   }
+
 resource "nugetpackage",
   :cookbook      => "oneops.1.nugetpackage",
   :design        => true,
@@ -191,7 +205,7 @@ resource "volume",
     :attributes => { "flex" => false, "min" => 1, "max" => 1 }
 end
 
-[ 'windowsservice', 'taskscheduler', 'dotnetframework','chocolatey-package' ,'volume','os', 'chocopackage', 'nugetpackage' ].each do |from|
+[ 'windowsservice', 'taskscheduler', 'dotnetframework','chocolatey-package' ,'volume','os', 'chocopackage', 'nugetpackage', 'baas' ].each do |from|
   relation "#{from}::managed_via::compute",
     :except => [ '_default' ],
     :relation_name => 'ManagedVia',

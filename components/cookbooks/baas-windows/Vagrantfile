@@ -1,0 +1,67 @@
+#VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = 'windows2016'
+  config.vm.guest = :windows
+  config.vm.box_url = "C:/Users/vgupta/Downloads/windows2016_vbox.box"
+
+  config.vm.provider "virtualbox" do |v|
+    v.gui = false
+  end
+
+  config.vm.communicator = "winrm"
+  config.winrm.timeout = 24000
+  config.winrm.max_tries = 20
+
+  config.winrm.host = '127.0.0.1'
+  config.winrm.username = 'vagrant'
+  config.winrm.password = 'vagrant'
+
+  config.vm.provision :chef_solo do |chef|
+  chef.log_level         = :debug
+  chef.cookbooks_path = [".."]
+  chef.add_recipe("baas-windows::install")
+
+  chef.json = {
+    "baas-windows": {
+      "repository_url": "C:\\baas",
+      "package_name": "Walmart.Platform.BAAS.SampleJob",
+      "version": "1.0.0",
+      "physical_path": "c:\\wmapps1",
+      "install_dir": "c:\\apps",
+      "driverid": "chandiniTestJobDriver",
+      "pathtoExe": "lib\\net451\\BAASSampleJob.exe",
+      "jobid": "2"
+    },
+    "workorder": {
+      "services": {
+        "dotnet-platform": {
+          "vagrant": {
+            "ciAttributes": {
+              "chocolatey_package_source": "C:\\baas",
+              "baas_package_details": "{ \"walmart.platform.baas.chocopackage\":\"1.0.16\", \"tibcoClient\":\"1.0.1\"}"
+            }
+          }
+        },
+        "mirror": {
+          "vagrant": {
+            "ciAttributes": {
+              "mirrors": "{ \"chocolatey-repo\":\"http://repo.wal-mart.com/service/local/nuget/choco-repo/\"}"
+            }
+          }
+        }
+      },
+      "cloud": {
+        "nsId": 110104,
+        "ciAttributes": {
+          "adminstatus": "active",
+          "auth": ""
+        },
+        "ciName": "vagrant",
+      }
+    }
+  }
+
+end
+
+end
