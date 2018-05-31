@@ -27,5 +27,7 @@ if binding_type == 'https' && site.cert_auto_provision == 'true'
   certificate["passphrase"] = site.cert_passphrase
 
   node.set[:certificate] = certificate
-  include_recipe provider + "::delete_certificate"
+  if !provider.nil? && !provider.empty?
+    include_recipe provider + "::delete_certificate"
+  end
 end

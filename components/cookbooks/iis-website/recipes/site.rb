@@ -23,15 +23,21 @@ end
 website_physical_path = physical_path
 heartbeat_path = "#{physical_path}/heartbeat.html"
 
+node.set[:workorder][:rfcCi][:ciAttributes][:auto_provision] = site.cert_auto_provision
+
+ssl_certificate_exists = 'false'
 thumbprint = ''
 Chef::Log.info "variable values - #{binding_type} and  #{site.cert_auto_provision}"
 if binding_type == 'https'
+    ssl_data = ''
+    ssl_password = site.cert_passphrase
+
     if site.cert_auto_provision == 'true'
         Chef::Log.info "checking if certificate service exists"
         cloud_name = node[:workorder][:cloud][:ciName]
         provider = ""
         cert_service = node[:workorder][:services][:certificate]
-        Chef::Log.info "Certificate Service - #{cloud_name} and  #{cert_service}"
+        Chef::Log.info "node info - #{node}"
         if !cert_service.nil? && !cert_service[cloud_name].nil?
             provider = node[:workorder][:services][:certificate][cloud_name][:ciClassName].gsub("cloud.service.","").downcase.split(".").last
         else
@@ -39,24 +45,27 @@ if binding_type == 'https'
             exit 1
         end
 
-        certificate = Hash.new
-        certificate["common_name"] = site.cert_common_name
-        certificate["san"] = site.cert_san
-        certificate["external"] = "false"
-        certificate["domain"] = site.cert_domain
-        certificate["owner_email"] = site.cert_owner_email
-        certificate["passphrase"] = site.cert_passphrase
+        newcertificate = Hash.new
+        newcertificate["common_name"] = site.cert_common_name
+        newcertificate["san"] = site.cert_san
+        newcertificate["external"] = "false"
+        newcertificate["domain"] = site.cert_domain
+        newcertificate["owner_email"] = site.cert_owner_email
+        newcertificate["passphrase"] = site.cert_passphrase
 
-        node.set[:certificate] = certificate
-        include_recipe provider + "::add_certificate"
-
-        ssl_data = node[:pfx_cert]
-        ssl_password = site.cert_passphrase
+        node.set[:certificate] = newcertificate
+        Chef::Log.info(" the auto provision variable value is  #{site.cert_auto_provision} and the provider value is #{provider}")
+        if !site.cert_auto_provision.nil? && site.cert_auto_provision == "true" && !provider.nil? && !provider.empty?
+                Chef::Log.info("including the provider certificate recipe ")
+        	include_recipe provider + "::add_certificate"
+                ssl_data = node[:pfx_cert]
+                Chef::Log.info("Got the ssl_data info here from auto certificate")
+        end
     else
         ssl_data = site.cert_ssl_data
-        ssl_password = site.cert_ssl_password
-
+        Chef::Log.info("Got the ssl_data info here")
     end
+
     cert = OpenSSL::X509::Certificate.new(ssl_data)
     thumbprint = OpenSSL::Digest::SHA1.new(cert.to_der).to_s
 

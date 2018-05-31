@@ -14,7 +14,7 @@ depends 'taskscheduler'
 
 grouping 'default',
   :access   => 'global',
-  :packages => ['base', 'mgmt.catalog', 'mgmt.manifest', 'catalog', 'manifest', 'bom' ]
+  :packages => ['base', 'mgmt.catalog', 'mgmt.manifest', 'catalog', 'manifest', 'bom']
 
 
 attribute 'package_name',
