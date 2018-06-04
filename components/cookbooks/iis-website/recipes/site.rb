@@ -27,7 +27,7 @@ node.set[:workorder][:rfcCi][:ciAttributes][:auto_provision] = site.cert_auto_pr
 
 ssl_certificate_exists = 'false'
 thumbprint = ''
-Chef::Log.info "variable values - #{binding_type} and  #{site.cert_auto_provision}"
+
 if binding_type == 'https'
     ssl_data = ''
     ssl_password = site.cert_passphrase
@@ -54,16 +54,15 @@ if binding_type == 'https'
         newcertificate["passphrase"] = site.cert_passphrase
 
         node.set[:certificate] = newcertificate
+        node.set[:print_cert_bom_attributes] = false
+
         Chef::Log.info(" the auto provision variable value is  #{site.cert_auto_provision} and the provider value is #{provider}")
         if !site.cert_auto_provision.nil? && site.cert_auto_provision == "true" && !provider.nil? && !provider.empty?
-                Chef::Log.info("including the provider certificate recipe ")
-        	include_recipe provider + "::add_certificate"
+                include_recipe provider + "::add_certificate"
                 ssl_data = node[:pfx_cert]
-                Chef::Log.info("Got the ssl_data info here from auto certificate")
         end
     else
         ssl_data = site.cert_ssl_data
-        Chef::Log.info("Got the ssl_data info here")
     end
 
     cert = OpenSSL::X509::Certificate.new(ssl_data)

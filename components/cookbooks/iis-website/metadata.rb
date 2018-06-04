@@ -10,6 +10,17 @@ depends 'iis'
 depends 'artifact'
 depends 'taskscheduler'
 
+found_folders = Dir.entries("#{File.dirname(__FILE__)}/../../../../").select {|f| !File.directory? f}
+found_folders.each do |folder|
+    if(folder.include?("circuit-") && !folder.include?("-1"))
+        Dir.glob("#{File.dirname(__FILE__)}/../../../../#{folder}/**/{*,.*}").each do |found_file|
+            cookbook_name = found_file.split('/').last
+            if File.directory?(found_file) && cookbook_name.include?("cert_service")
+                depends cookbook_name
+            end
+        end
+    end
+end
 
 
 grouping 'default',
