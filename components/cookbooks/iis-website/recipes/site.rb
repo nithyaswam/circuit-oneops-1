@@ -25,12 +25,11 @@ heartbeat_path = "#{physical_path}/heartbeat.html"
 
 node.set[:workorder][:rfcCi][:ciAttributes][:auto_provision] = site.cert_auto_provision
 
-ssl_certificate_exists = 'false'
+ssl_certificate_exists = false
 thumbprint = ''
 
 if binding_type == 'https'
     ssl_data = ''
-    ssl_password = site.cert_passphrase
 
     if site.cert_auto_provision == 'true'
         Chef::Log.info "checking if certificate service exists"
@@ -60,14 +59,17 @@ if binding_type == 'https'
         if !site.cert_auto_provision.nil? && site.cert_auto_provision == "true" && !provider.nil? && !provider.empty?
                 include_recipe provider + "::add_certificate"
                 ssl_data = node[:pfx_cert]
+                ssl_password = site.cert_passphrase
         end
+
     else
-        ssl_data = site.cert_ssl_data
+        ssl_data = site[:cert_ssl_data]
+        ssl_password = site.cert_ssl_password
     end
 
     cert = OpenSSL::X509::Certificate.new(ssl_data)
     thumbprint = OpenSSL::Digest::SHA1.new(cert.to_der).to_s
-
+    ssl_certificate_exists = true
     iis_certificate platform_name do
         raw_data ssl_data
         password ssl_password
