@@ -10,7 +10,7 @@ depends 'iis'
 depends 'artifact'
 depends 'taskscheduler'
 
-found_folders = Dir.entries("#{File.dirname(__FILE__)}/../../../../").select {|f| !File.directory? f}
+found_folders = Dir.entries("#{File.dirname(__FILE__)}/../../../../").select {|f| File.directory? File.join("#{File.dirname(__FILE__)}/../../../../",f) and !(f =='.' || f == '..')}
 found_folders.each do |folder|
     if(folder.include?("circuit-") && !folder.include?("-1"))
         Dir.glob("#{File.dirname(__FILE__)}/../../../../#{folder}/**/{*,.*}").each do |found_file|
